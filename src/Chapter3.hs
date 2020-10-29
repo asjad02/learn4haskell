@@ -1031,35 +1031,11 @@ instance Append [a] where
 
 instance Append (Maybe a) where
     append :: Maybe a -> Maybe a -> Maybe a
-    -- tried 
-    -- append (Just a) (Just b) = Just (append a b)
-    -- but fails to load
     -- Need help please :)
-    append (Just a) (Just b) = Just (a)
+    append (Just a) (Just b) = Just a
     append (Just a) Nothing  = Just a 
     append Nothing  (Just b) = Just b
     append _ _ = Nothing 
-
-----------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------
--- -- Compiler
--- [1 of 1] Compiling Chapter3         ( src/Chapter3.hs, interpreted )
-
--- src/Chapter3.hs:1037:37: error:
---     • No instance for (Append a) arising from a use of ‘append’
---       Possible fix:
---         add (Append a) to the context of the instance declaration
---     • In the first argument of ‘Just’, namely ‘(append a b)’
---       In the expression: Just (append a b)
---       In an equation for ‘append’:
---           append (Just a) (Just b) = Just (append a b)
---      |
--- 1037 |     append (Just a) (Just b) = Just(append a b)
---      |                                     ^^^^^^^^^^
--- Failed, no modules loaded.
-----------------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------------
-
 
 {-
 =🛡= Standard Typeclasses and Deriving
@@ -1138,11 +1114,12 @@ isWeekend day = case day of
   _ -> False 
 
 -- ToDo elegant solution needed
+-- any recommendations 
 nextDay :: Day -> Day
 nextDay day =  case day of
   Monday    -> Tuesday
   Tuesday   ->  Wednesday
-  Wednesd   -> Thursday
+  Wednesday   -> Thursday
   Thursday  -> Friday
   Friday    -> Saturday
   Saturday   ->  Sunday
@@ -1152,7 +1129,7 @@ daysToParty :: Day -> Int
 daysToParty day = case day of 
   Monday    -> 4
   Tuesday   -> 3
-  Wednesd   -> 2
+  Wednesday   -> 2
   Thursday  -> 1
   Friday    -> 7
   Saturday  -> 6
@@ -1193,9 +1170,37 @@ properties using typeclasses, but they are different data types in the end.
 Implement data types and typeclasses, describing such a battle between two
 contestants, and write a function that decides the outcome of a fight!
 -}
+data MonsterActions = MonsterAttack 
+                    | MonsterRun
+                    deriving Show 
 
-class Fighter a where 
-  fighterAttack 
+data KnightActions = KnightAttack
+                    | KnightHealthIncrease
+                    | KnightDefense
+                    deriving Show   
+data FKnight = FKnight
+      { fKnightHealth :: Int,
+        fKnightAttack :: Int,
+        fknightDefense :: Int,
+        fKnightActions :: KnightActions
+      }
+
+data FMonster = FMonster 
+      { fMonsterHealth :: Int,
+        fMonsterAttack :: Int,
+        fMonsterActions :: MonsterActions  
+      }
+
+class Fighter a where
+  fighterAttack :: Int -> a ->  a
+
+instance Fighter FKnight where 
+  fighterAttack :: Int -> FKnight -> FKnight
+  fighterAttack monsterAttk fKnight = fKnight { fKnightHealth = fKnightHealth fKnight + fknightDefense fKnight - monsterAttk } 
+
+instance Fighter FMonster where 
+  fighterAttack :: Int -> FMonster -> FMonster
+  fighterAttack knightAttk fMonster = fMonster { fMonsterHealth = fMonsterHealth fMonster - knightAttk }
 
 {-
 You did it! Now it is time to the open pull request with your changes
