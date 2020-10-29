@@ -886,9 +886,16 @@ and reverses it.
   function, but in this task, you need to implement it manually. No
   cheating!
 -}
+-- ToDo :: https://github.com/kowainik/learn4haskell/pull/111
+-- ref :: https://kowainik.github.io/posts/haskell-mini-patterns#recursive-go
+
 rewind :: [a] -> [a]
 rewind [] = []
-rewind (x: xs) = rewind xs ++ [x]
+rewind list = go [] list
+  where
+    go :: [a] -> [a] -> [a]
+    go acc [] = acc 
+    go acc (x: xs) = go (x:acc) xs
 
 
 {-
