@@ -680,8 +680,8 @@ Can you implement a monad version of AND, polymorphic over any monad?
 
 🕯 HINT: Use "(>>=)", "pure" and anonymous function
 -}
--- andM :: (Monad m) => m Bool -> m Bool -> m Bool
--- andM m1 m2 = (m1, m2) >>= andCheck
+andM :: (Monad m) => m Bool -> m Bool -> m Bool
+andM m1 m2 = m1 >>= (\x -> if x == True then m2 else pure False )
 
 {- |
 =🐉= Task 9*: Final Dungeon Boss
@@ -725,6 +725,21 @@ Specifically,
  ❃ Implement the function to convert Tree to list
 -}
 
+data Tree a = Leaves
+            | Node a (Tree a) (Tree a)
+
+instance Functor Tree where
+  fmap :: (a -> b) -> Tree a -> Tree b
+  fmap _ Leaves = Leaves
+  fmap f (Node x lTree rTree) = Node (f x) (fmap f lTree) (fmap f rTree)
+
+reverseTree :: Tree a -> Tree a
+reverseTree Leaves = Leaves
+reverseTree (Node x lTree rTree) = Node x (reverseTree rTree) (reverseTree lTree)
+
+treeToList :: Tree a -> [a]
+treeToList Leaves = []
+treeToList (Node x lTree rTree) = x : (treeToList lTree) ++ (treeToList rTree)
 
 {-
 You did it! Now it is time to the open pull request with your changes

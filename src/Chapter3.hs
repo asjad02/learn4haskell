@@ -1029,10 +1029,9 @@ instance Append [a] where
     append :: [a] -> [a] -> [a]
     append list1 list2 = list1 ++ list2
 
-instance Append (Maybe a) where
+instance (Append a) => Append (Maybe a) where
     append :: Maybe a -> Maybe a -> Maybe a
-    -- Need help please :)
-    append (Just a) (Just b) = Just a
+    append (Just a) (Just b) = Just (append a b)
     append (Just a) Nothing  = Just a 
     append Nothing  (Just b) = Just b
     append _ _ = Nothing 
