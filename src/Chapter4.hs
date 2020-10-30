@@ -485,9 +485,12 @@ instance Applicative (Secret e) where
   pure = Reward
 
   (<*>) :: Secret e (a -> b) -> Secret e a -> Secret e b
-  _        <*> (Trap e) = Trap e
+  Trap f <*> _ = Trap f
   Reward f <*> x        = fmap f x
 
+-- Trap f      <*> (Trap e) = Trap f
+-- this previosu implementation was breaking a case, 
+--  in Applicatives do we need to give precednece to the function ?
 
 {- |
 =⚔️= Task 5
