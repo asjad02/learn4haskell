@@ -114,23 +114,23 @@ As always, try to guess the output first! And don't forget to insert
 the output in here:
 
 >>> :k Char
-
+Char :: *
 >>> :k Bool
-
+Bool :: *
 >>> :k [Int]
-
+[Int] :: *
 >>> :k []
-
+[] :: * -> *
 >>> :k (->)
-
+(->) :: * -> * -> *
 >>> :k Either
-
+Either :: * -> * -> *
 >>> data Trinity a b c = MkTrinity a b c
 >>> :k Trinity
-
+Trinity :: * -> * -> * -> *
 >>> data IntBox f = MkIntBox (f Int)
 >>> :k IntBox
-
+IntBox :: (* -> *) -> *
 -}
 
 {- |
@@ -259,7 +259,7 @@ name.
 
 > QUESTION: Can you understand why the following implementation of the
   Functor instance for Maybe doesn't compile?
-
+Pattern Matching will fail since the case for Nothing isn't considered
 @
 instance Functor Maybe where
     fmap :: (a -> b) -> Maybe a -> Maybe b
@@ -282,7 +282,6 @@ data Secret e a
     | Reward a
     deriving (Show, Eq)
 
-
 {- |
 Functor works with types that have kind `* -> *` but our 'Secret' has
 kind `* -> * -> *`. What should we do? Don't worry. We can partially
@@ -292,8 +291,10 @@ we can reuse already known concepts (e.g. partial application) from
 values and apply them to the type level?
 -}
 instance Functor (Secret e) where
-    fmap :: (a -> b) -> Secret e a -> Secret e b
-    fmap = error "fmap for Box: not implemented!"
+  fmap :: (a -> b) -> Secret e a -> Secret e b
+  -- fmap = error "fmap for Box: not implemented!"
+  fmap _ (Trap   e) = Trap e
+  fmap f (Reward a) = Reward (f a)
 
 {- |
 =⚔️= Task 3
@@ -306,6 +307,12 @@ typeclasses for standard data types.
 data List a
     = Empty
     | Cons a (List a)
+
+instance Functor List where
+  fmap :: (a -> b) -> List a -> List b
+  fmap _ Empty         = Empty
+  fmap f (Cons a list) = Cons (f a) (fmap f list)
+
 
 {- |
 =🛡= Applicative
@@ -376,6 +383,9 @@ you still remember that in Haskell we have Higher-Order functions,
 right? This means that functions can not only be passed as arguments
 to data types but can also be stored inside other containers. Even
 'Maybe' (e.g. "Maybe (Int -> Int)")!
+
+one question::
+A function inside a context it is possible due to pure ?
 
 >>> Just not <*> Just True
 Just False
@@ -471,11 +481,16 @@ Applicatives can be found in many applications:
 Implement the Applicative instance for our 'Secret' data type from before.
 -}
 instance Applicative (Secret e) where
-    pure :: a -> Secret e a
-    pure = error "pure Secret: Not implemented!"
+  pure :: a -> Secret e a
+  pure = Reward
 
-    (<*>) :: Secret e (a -> b) -> Secret e a -> Secret e b
-    (<*>) = error "(<*>) Secret: Not implemented!"
+  (<*>) :: Secret e (a -> b) -> Secret e a -> Secret e b
+  Trap f <*> _ = Trap f
+  Reward f <*> x        = fmap f x
+
+-- Trap f      <*> (Trap e) = Trap f
+-- this previosu implementation was breaking a case, 
+--  in Applicatives do we need to give precednece to the function ?
 
 {- |
 =⚔️= Task 5
@@ -489,7 +504,42 @@ Implement the 'Applicative' instance for our 'List' type.
   type.
 -}
 
+listFlatten :: List a -> List a -> List a
+listFlatten Empty       list2 = list2
+listFlatten list1       Empty = list1
+listFlatten (Cons x xs) list2 = Cons x (listFlatten xs list2)
 
+
+instance Applicative List where
+  pure :: a -> List a
+  pure x = Cons x Empty
+
+  (<*>) :: List (a -> b) -> List a -> List b
+  Empty       <*> _  = Empty
+  (Cons f fs) <*> xs = listFlatten (fmap f xs) (fs <*> xs)
+{- 
+With this solution i was getting the following error, but when I used listFlatten 
+created for Monad is working well :: any assistance on the subject will be great :)
+
+    (Cons f fs) <*> xs = Cons (fmap f xs) (fs <*> xs)
+
+
+src/Chapter4.hs:515:44: error:
+    • Occurs check: cannot construct the infinite type: b ~ List b
+      Expected type: List (List b)
+        Actual type: List b
+    • In the second argument of ‘Cons’, namely ‘(fs <*> xs)’
+      In the expression: Cons (fmap f xs) (fs <*> xs)
+      In an equation for ‘<*>’:
+          (Cons f fs) <*> xs = Cons (fmap f xs) (fs <*> xs)
+    • Relevant bindings include
+        fs :: List (a -> b) (bound at src/Chapter4.hs:515:13)
+        f :: a -> b (bound at src/Chapter4.hs:515:11)
+        (<*>) :: List (a -> b) -> List a -> List b
+          (bound at src/Chapter4.hs:514:11)
+    |
+515 |     (Cons f fs) <*> xs = Cons (fmap f xs) (fs <*> xs)
+ -}
 {- |
 =🛡= Monad
 
@@ -542,9 +592,8 @@ but only if the number is even.
 
 -}
 half :: Int -> Maybe Int
-half n
-    | even n = Just (div n 2)
-    | otherwise = Nothing
+half n | even n    = Just (div n 2)
+       | otherwise = Nothing
 
 {- |
 
@@ -599,8 +648,9 @@ concepts in the end.
 Implement the 'Monad' instance for our 'Secret' type.
 -}
 instance Monad (Secret e) where
-    (>>=) :: Secret e a -> (a -> Secret e b) -> Secret e b
-    (>>=) = error "bind Secret: Not implemented!"
+  (>>=) :: Secret e a -> (a -> Secret e b) -> Secret e b
+  Trap   e >>= _ = Trap e
+  Reward a >>= f = f a
 
 {- |
 =⚔️= Task 7
@@ -611,6 +661,11 @@ Implement the 'Monad' instance for our lists.
   maybe a few) to flatten lists of lists to a single list.
 -}
 
+
+instance Monad List where
+  (>>=) :: List a -> (a -> List b) -> List b
+  Empty       >>= _ = Empty
+  (Cons x xs) >>= f = listFlatten (f x) (xs >>= f)
 
 {- |
 =💣= Task 8*: Before the Final Boss
@@ -629,7 +684,7 @@ Can you implement a monad version of AND, polymorphic over any monad?
 🕯 HINT: Use "(>>=)", "pure" and anonymous function
 -}
 andM :: (Monad m) => m Bool -> m Bool -> m Bool
-andM = error "andM: Not implemented!"
+andM m1 m2 = m1 >>= (\x -> if x == True then m2 else pure False )
 
 {- |
 =🐉= Task 9*: Final Dungeon Boss
@@ -673,6 +728,21 @@ Specifically,
  ❃ Implement the function to convert Tree to list
 -}
 
+data Tree a = Leaves
+            | Node a (Tree a) (Tree a)
+
+instance Functor Tree where
+  fmap :: (a -> b) -> Tree a -> Tree b
+  fmap _ Leaves = Leaves
+  fmap f (Node x lTree rTree) = Node (f x) (fmap f lTree) (fmap f rTree)
+
+reverseTree :: Tree a -> Tree a
+reverseTree Leaves = Leaves
+reverseTree (Node x lTree rTree) = Node x (reverseTree rTree) (reverseTree lTree)
+
+treeToList :: Tree a -> [a]
+treeToList Leaves = []
+treeToList (Node x lTree rTree) = x : (treeToList lTree) ++ (treeToList rTree)
 
 {-
 You did it! Now it is time to the open pull request with your changes

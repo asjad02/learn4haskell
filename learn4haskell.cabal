@@ -24,6 +24,7 @@ source-repository head
 common common-options
   build-depends:       base >= 4.12.0.0 && < 4.15
 
+
   ghc-options:         -Wall
                        -Wcompat
                        -Widentities
